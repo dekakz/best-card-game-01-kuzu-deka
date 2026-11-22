@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember Court — a duel of four suits</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #17101a; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #f3e9d8; }
+  #app { position: fixed; inset: 0; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+    background: #241322; }
+
+  /* ---- Title screen ---- */
+  .game-title { margin: 0; font-size: 92px; line-height: 0.95; letter-spacing: 10px; text-align: center;
+    background: linear-gradient(180deg, #ffd166, #ff6b5e 60%, #e5484d); -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 42px rgba(255, 107, 94, 0.35); }
+  .tagline { font-size: 21px; font-style: italic; color: #e8cfae; margin: 14px 0 22px; }
+  .suit-row { display: flex; gap: 14px; margin-bottom: 22px; }
+  .suit-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border: 2px solid; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35); font-size: 18px; font-weight: bold; }
+  .rules-box { max-width: 640px; background: rgba(0, 0, 0, 0.4); border: 1px solid #5c3a4a; border-radius: 12px; padding: 6px 22px; margin-bottom: 24px; }
+  .rules-box p { margin: 10px 0; font-size: 16px; line-height: 1.45; color: #efe0c8; }
+  .start-button { font-family: inherit; font-size: 24px; font-weight: bold; letter-spacing: 3px; color: #1c0f14;
+    background: linear-gradient(180deg, #ffd166, #f5a524); border: none; border-radius: 12px; padding: 16px 42px; cursor: pointer;
+    box-shadow: 0 6px 0 #7a5200, 0 10px 28px rgba(0, 0, 0, 0.5); transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .start-button:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #7a5200, 0 14px 32px rgba(0, 0, 0, 0.55); }
+  .start-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #7a5200; }
+  .hint-line { font-size: 14px; color: #b99b7d; margin-top: 16px; }
+
+  /* ---- Table ---- */
+  .table { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 10px 28px;
+    background: #1d3319; }
+  .opponent-row, .player-row { display: flex; align-items: center; gap: 18px; }
+  .side-label { width: 250px; font-size: 17px; font-weight: bold; letter-spacing: 1px; }
+  .ai-tell { display: block; font-size: 14px; font-style: italic; font-weight: normal; color: #cfe3c2; margin-top: 4px; }
+  .hand { display: flex; gap: 10px; flex: 1; justify-content: center; }
+  .life-bar { position: relative; width: 170px; height: 30px; background: rgba(0, 0, 0, 0.55); border: 2px solid #6b4a3a; border-radius: 8px; overflow: hidden; }
+  .life-fill { height: 100%; background: linear-gradient(90deg, #e5484d, #ff6b5e); transition: width 0.45s ease; }
+  .life-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: bold; }
+  .centre-row { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 0; }
+  .court-banner { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: bold; padding: 7px 20px;
+    border: 3px solid; border-radius: 999px; background: rgba(0, 0, 0, 0.45); }
+  .score-line { font-size: 16px; color: #d8c9a8; }
+  .played-row { display: flex; align-items: center; gap: 26px; min-height: 180px; }
+  .played-hint { font-size: 18px; font-style: italic; color: #cfe3c2; }
+  .versus { font-size: 30px; font-weight: bold; color: #ffd166; }
+  .game-log { font-size: 17px; font-style: italic; color: #efe0c8; max-width: 760px; text-align: center; min-height: 24px; }
+  .ward-note { font-size: 15px; color: #7ddc8f; }
+
+  /* ---- Cards ---- */
+  .card { width: 118px; height: 158px; border-radius: 12px; flex: none; }
+  button.card { padding: 0; border: none; cursor: pointer; background: none; font-family: inherit;
+    transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  button.card:hover { transform: translateY(-14px) rotate(-1deg); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55); }
+  .card-face, .card-back { width: 100%; height: 100%; border-radius: 12px; overflow: hidden; }
+  .card-face { background: linear-gradient(160deg, #fffdf6, #f2e7cf); color: #1c0f14; border: 3px solid #2b1a12;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 6px 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+  .card-face.suit-flame { border-top: 10px solid #e5484d; }
+  .card-face.suit-tide { border-top: 10px solid #3e9bff; }
+  .card-face.suit-thorn { border-top: 10px solid #46a758; }
+  .card-face.suit-stone { border-top: 10px solid #f5a524; }
+  .card-corner { display: flex; align-items: center; gap: 4px; }
+  .card-num { font-size: 26px; font-weight: bold; line-height: 1; }
+  .card-centre { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .card-big { font-size: 42px; font-weight: bold; line-height: 1; }
+  .card-court { font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #8f1d22; }
+  .card-suit-name { text-align: center; font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+  .court-doubled .card-big { color: #8f1d22; }
+  .card-back { background: repeating-linear-gradient(45deg, #3a1f2e 0 12px, #2a1522 12px 24px);
+    border: 3px solid #f5a524; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .card-back-sigil { font-size: 40px; color: #ffd166; }
+  .card-back-word { font-size: 13px; letter-spacing: 2px; color: #ffd166; text-align: center; }
+  .card.played { width: 128px; height: 172px; }
+  .card.empty { background: rgba(255, 255, 255, 0.06); border: 2px dashed rgba(255, 255, 255, 0.25); }
+  .ai-card { width: 92px; height: 124px; }
+  .ai-card.ai-favoured { outline: 3px solid #ffd166; outline-offset: 3px; box-shadow: 0 0 22px rgba(255, 209, 102, 0.75); }
+
+  /* ---- Motion: deal, flip, snap ---- */
+  @keyframes dealIn { from { transform: translateY(-46px) rotate(-4deg); opacity: 0; } to { transform: translateY(0) rotate(0); opacity: 1; } }
+  .deal-in { animation: dealIn 0.45s ease both; }
+  @keyframes flipIn { from { transform: rotateY(88deg) scale(0.92); } to { transform: rotateY(0) scale(1); } }
+  .flip-in { animation: flipIn 0.5s ease both; }
+
+  /* ---- End screens ---- */
+  .end-screen.win { background: #2e1a08; }
+  .end-screen.loss { background: #171a26; }
+  .end-title { margin: 0; font-size: 64px; letter-spacing: 6px; text-align: center; color: #ffd166; text-shadow: 0 0 36px rgba(255, 209, 102, 0.4); }
+  .end-screen.loss .end-title { color: #9db4d8; text-shadow: 0 0 36px rgba(120, 150, 200, 0.4); }
+  .end-sub { font-size: 21px; font-style: italic; color: #efe0c8; margin: 16px 0 20px; text-align: center; max-width: 640px; }
+  .final-score { font-size: 19px; font-weight: bold; background: rgba(0, 0, 0, 0.45); border: 1px solid #6b4a3a;
+    border-radius: 10px; padding: 12px 24px; margin-bottom: 26px; }
+  .ember-burst { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .ember { position: absolute; bottom: -12px; width: 9px; height: 9px; border-radius: 50%;
+    animation: rise 3.2s ease-in infinite; box-shadow: 0 0 12px 3px rgba(255, 180, 80, 0.6); }
+  @keyframes rise { from { transform: translateY(0) scale(1); opacity: 1; } to { transform: translateY(-760px) scale(0.3); opacity: 0; } }
+
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
